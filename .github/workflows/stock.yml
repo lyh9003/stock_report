@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
         with:
-          persist-credentials: false
+          path: .
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -28,7 +28,6 @@ jobs:
       - name: Run the crawler script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        working-directory: ./
         run: python naver_stock.py
         # 크롤러 스크립트 파일 이름이 naver_news.py 인지 확인하세요.
 
