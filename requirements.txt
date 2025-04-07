@@ -5,12 +5,7 @@ datetime
 tqdm
 selenium
 openai==1.61.0
-langchain==0.3.17
-langchain_openai==0.3.3
-langchain_community==0.3.16
-langchain_experimental
 tiktoken==0.8.0
 pypdf==5.2.0
-beautifulsoup4==4.13.1
 sentence-transformers
 PyPDF2
