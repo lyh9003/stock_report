@@ -75,9 +75,10 @@ def one_line_summary(prompt):
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": (
-                    "당신은 반도체기업 사장단에게 보고할 증권레포트 1줄 요약 전문가입니다. 다음 보고서 본문을 한 문장으로 요약해 주세요."
-                )},
+                {
+                    "role": "system",
+                    "content": "당신은 반도체기업 사장단에게 보고할 증권레포트 1줄 요약 전문가입니다. 다음 보고서 본문을 한 문장으로 요약해 주세요."
+                },
                 {"role": "user", "content": prompt}
             ]
         )
@@ -87,12 +88,11 @@ def one_line_summary(prompt):
         result = ""
     return result
 
-
 # 크롤링할 사이트 URL 목록 및 CSV 파일 경로
 urls = [
-    'https://finance.naver.com/research/industry_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=upjong&upjong=%B9%DD%B5%B5%C3%BC&x=8&y=16', #반도체산업레포트
-    'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=%BB%EF%BC%BA%C0%FC%C0%DA&itemCode=005930&x=23&y=16', #삼성전자레포트
-    'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=SK%C7%CF%C0%CC%B4%D0%BDBA&itemCode=000660&x=45&y=28' #하이닉스레포트
+    'https://finance.naver.com/research/industry_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=upjong&upjong=%B9%DD%B5%B5%C3%BC&x=8&y=16',  # 반도체산업레포트
+    'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=%BB%EF%BC%BA%C0%FC%C0%DA&itemCode=005930&x=23&y=16',  # 삼성전자레포트
+    'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=SK%C7%CF%C0%CC%B4%D0%BDBA&itemCode=000660&x=45&y=28'  # 하이닉스레포트
 ]
 csv_file = "reports.csv"
 
@@ -195,7 +195,7 @@ for url in urls:
         
         processed_count += 1
         #if processed_count >= 2: 
-        #    break
+        #   break
 
 # 신규 데이터가 있으면 기존 데이터와 합쳐 CSV로 저장 (모든 셀을 큰따옴표로 감쌈)
 if new_reports:
@@ -205,12 +205,17 @@ if new_reports:
     else:
         updated_df = new_df
 
-    # 날짜 컬럼을 datetime 타입으로 변환 (날짜 형식이 일관적이어야 합니다)
-    updated_df['날짜'] = pd.to_datetime(updated_df['날짜'], errors='coerce')
-    # 날짜 기준 내림차순 정렬
+    # 날짜 컬럼을 datetime 타입으로 변환 (입력 형식은 '년.월.일' 이므로 format='%y.%m.%d' 사용)
+    updated_df['날짜'] = pd.to_datetime(updated_df['날짜'], format='%y.%m.%d', errors='coerce')
+    # 날짜 기준 내림차순 정렬 (데이터프레임에 저장될 때는 '년-월-일' 포맷이 기본 출력입니다)
     updated_df = updated_df.sort_values(by='날짜', ascending=False)
 
+    # 최종 CSV 파일 저장 전 "index" 칼럼 삭제
+    if 'index' in updated_df.columns:
+        updated_df = updated_df.drop(columns=['index'])
+        
     updated_df.to_csv(csv_file, index=False, encoding='utf-8-sig', quoting=csv.QUOTE_ALL)
     print(f"CSV 파일 저장 완료: {csv_file} (추가된 보고서 수: {len(new_reports)})")
 else:
     print("새로운 데이터가 없습니다.")
+
