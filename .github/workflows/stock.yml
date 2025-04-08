@@ -12,11 +12,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
-
-      - name: Print current directory and list files
-        run: |
-          pwd
-          ls -R .
+        with:
+          persist-credentials: false
           
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -31,8 +28,7 @@ jobs:
       - name: Run the crawler script
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python ./naver_stock.py
-        working-directory: ./stock_report
+        run: python naver_stock.py
         # 크롤러 스크립트 파일 이름이 naver_news.py 인지 확인하세요.
 
       - name: Set remote URL with PAT token
