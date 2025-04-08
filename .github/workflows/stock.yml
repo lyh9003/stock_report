@@ -33,7 +33,7 @@ jobs:
 
       - name: Set remote URL with PAT token
         run: |
-          git remote set-url origin https://${{ secrets.REPORTS }}@github.com/lyh9003/stock_report.git
+          git remote set-url origin https://${{ secrets.NAVER_NEWS }}@github.com/lyh9003/stock_report.git
           git remote -v
 
       - name: Commit CSV changes
