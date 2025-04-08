@@ -16,6 +16,7 @@ GITHUB_CSV_URL = f"https://raw.githubusercontent.com/lyh9003/stock_report/main/r
 api_key = os.getenv("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
+
 def is_format_line(line):
     """
     줄 전체가 서식용 기호('-','|','=','_')만으로 구성되어 있다면 True를 반환합니다.
@@ -194,8 +195,8 @@ for url in urls:
         index_counter += 1
         
         processed_count += 1
-        #if processed_count >= 2: 
-        #   break
+        if processed_count >= 2: 
+           break
 
 # 신규 데이터가 있으면 기존 데이터와 합쳐 CSV로 저장 (모든 셀을 큰따옴표로 감쌈)
 if new_reports:
@@ -218,4 +219,3 @@ if new_reports:
     print(f"CSV 파일 저장 완료: {csv_file} (추가된 보고서 수: {len(new_reports)})")
 else:
     print("새로운 데이터가 없습니다.")
-
