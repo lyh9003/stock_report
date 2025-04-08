@@ -2,6 +2,7 @@ import os
 import io
 import re
 import csv
+import time
 import requests
 import pandas as pd
 from openai import OpenAI
@@ -35,16 +36,27 @@ def clean_text(text):
 def classify_title(prompt):
     """
     경영사장단 보고용 증권레포트 '본문 전체'를 아래 양식에 맞게 요약합니다.
-
     """
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": (
-                    "당신은 경영사장단에게 보고할 증권레포트 요약 전문가입니다. "
-                    "전체 보고서 본문을 읽고 아래 양식에 맞게 재무 성과, 시장 동향, 주요 리스크와 기회, "
-                    "기타 전략적 인사이트를 간결하고 명확하게 요약해 주세요."
+                    """
+                    당신은 반도체기업 사장단에게 보고할 증권레포트 요약 전문가입니다. 
+                    전체 보고서 본문을 읽고 아래 양식에 맞게 재무 성과, 시장 동향, 주요 리스크와 기회, 
+                    기타 전략적 인사이트를 요약해 주세요. 글자수는 레포트가 짧으면 400자 내외, 길면 1000자 내외로 해주세요.
+                    보고서를 기반으로 요약해야 합니다.
+                                        [보고서 요약 양식]
+                    1. 시장 동향:
+                       - 현재 시장 상황 및 변화
+                    2. 주요 리스크:
+                       - 잠재적 위험 요소
+                    3. 주요 기회:
+                       - 향후 성장 및 기회
+                    4. 기타 전략적 인사이트:
+                       - 추가적으로 고려할 사항
+                    """
                 )},
                 {"role": "user", "content": prompt}
             ]
@@ -61,7 +73,7 @@ def classify_title(prompt):
 urls = [
     'https://finance.naver.com/research/industry_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=upjong&upjong=%B9%DD%B5%B5%C3%BC&x=8&y=16',
     'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=%BB%EF%BC%BA%C0%FC%C0%DA&itemCode=005930&x=23&y=16',
-    'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=SK%C7%CF%C0%CC%B4%D0%BD%BA&itemCode=000660&x=45&y=28'
+    'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=SK%C7%CF%C0%CC%B4%D0%BDBA&itemCode=000660&x=45&y=28'
 ]
 csv_file = "reports.csv"
 
@@ -85,6 +97,8 @@ for url in urls:
     
     soup = BeautifulSoup(response.text, 'html.parser')
     
+    processed_count = 0  # 각 사이트에서 처리한 PDF 개수를 카운트합니다.
+    
     for row in soup.find_all("tr"):
         file_td = row.find("td", class_="file")
         if not file_td:
@@ -105,7 +119,9 @@ for url in urls:
 
         # 이미 저장된 링크라면 건너뜁니다.
         if pdf_url in existing_links:
-            print(f"이미 저장된 보고서입니다: {pdf_url}")
+            print(f"이미 저장된 보고서입니다: {pdf_ur        processed_count += 1
+        # 아래 두 줄의 주석을 해제하면, 각 사이트에서 최대 2개의 PDF만 처리합니다.
+        if processed_count >= 2: breakl}")
             continue
 
         # PDF 파일 다운로드 및 텍스트 추출
@@ -148,6 +164,10 @@ for url in urls:
         })
         print(f"신규 보고서 {index_counter} 처리 완료: {report_title}")
         index_counter += 1
+        
+        processed_count += 1
+        # 아래 두 줄의 주석을 해제하면, 각 사이트에서 최대 2개의 PDF만 처리합니다.
+        if processed_count >= 2: break
 
 # 신규 데이터가 있으면 기존 데이터와 합쳐 CSV로 저장 (모든 셀을 큰따옴표로 감쌈)
 if new_reports:
