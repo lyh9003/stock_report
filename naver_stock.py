@@ -119,9 +119,11 @@ for url in urls:
 
         # 이미 저장된 링크라면 건너뜁니다.
         if pdf_url in existing_links:
-            print(f"이미 저장된 보고서입니다: {pdf_ur        processed_count += 1
-        # 아래 두 줄의 주석을 해제하면, 각 사이트에서 최대 2개의 PDF만 처리합니다.
-        if processed_count >= 2: breakl}")
+            print(f"이미 저장된 보고서입니다: {pdf_url}")
+            processed_count += 1
+            # 아래 두 줄의 주석을 해제하면, 각 사이트에서 최대 2개의 PDF만 처리합니다.
+            if processed_count >= 2:
+                break
             continue
 
         # PDF 파일 다운로드 및 텍스트 추출
