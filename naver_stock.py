@@ -9,8 +9,8 @@ from openai import OpenAI
 from bs4 import BeautifulSoup
 from PyPDF2 import PdfReader
 
+# 캐시를 방지하기 위해 현재 시간을 포함한 URL
 GITHUB_CSV_URL = f"https://raw.githubusercontent.com/lyh9003/stock_report/main/reports.csv?nocache={int(time.time())}"
-
 
 # OpenAI API 키 설정: 환경변수 OPENAI_API_KEY가 반드시 올바르게 설정되어 있어야 합니다.
 api_key = os.getenv("OPENAI_API_KEY")
@@ -19,7 +19,7 @@ client = OpenAI(api_key=api_key)
 
 def is_format_line(line):
     """
-    줄 전체가 서식용 기호('-','|','=','_')만으로 구성되어 있다면 True를 반환합니다.
+    줄 전체가 서식용 기호('-', '|', '=', '_')만으로 구성되어 있다면 True를 반환합니다.
     """
     line_stripped = line.strip()
     if not line_stripped:
@@ -27,12 +27,14 @@ def is_format_line(line):
     formatting_chars = set("-|=_")
     return all(c in formatting_chars or c.isspace() for c in line_stripped)
 
+
 def clean_text(text):
     """
     PDF 텍스트에서 모든 종류의 줄바꿈 및 제어문자(\r, \n, \x0b, \x0c, U+2028, U+2029, 탭)를 공백으로 치환합니다.
     """
     cleaned = re.sub(r'[\r\n\x0b\x0c\u2028\u2029\t]+', ' ', text)
     return cleaned.strip()
+
 
 def classify_title(prompt):
     """
@@ -68,6 +70,7 @@ def classify_title(prompt):
         result = ""
     return result
 
+
 def one_line_summary(prompt):
     """
     증권레포트 본문을 한 문장으로 요약합니다.
@@ -89,7 +92,7 @@ def one_line_summary(prompt):
         result = ""
     return result
 
-# 크롤링할 사이트 URL 목록 및 CSV 파일 경로
+# 크롤링할 사이트 URL 목록 및 CSV 파일 경로 설정
 urls = [
     'https://finance.naver.com/research/industry_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=upjong&upjong=%B9%DD%B5%B5%C3%BC&x=8&y=16',  # 반도체산업레포트
     'https://finance.naver.com/research/company_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=itemCode&itemName=%BB%EF%BC%BA%C0%FC%C0%DA&itemCode=005930&x=23&y=16',  # 삼성전자레포트
@@ -97,11 +100,15 @@ urls = [
 ]
 csv_file = "reports.csv"
 
-# 기존 CSV 파일이 있으면 읽고, 없으면 새로 생성
+# CSV 파일이 존재하면 읽고, 없으면 새로 생성합니다.
 if os.path.exists(csv_file):
     existing_df = pd.read_csv(csv_file)
     existing_links = set(existing_df['link'].tolist())
-    index_counter = existing_df['index'].max() + 1 if not existing_df.empty else 1
+    # 'index' 컬럼이 존재하는지 확인 후, 없으면 기존 행의 개수로 인덱스 번호를 결정합니다.
+    if 'index' in existing_df.columns:
+        index_counter = existing_df['index'].max() + 1
+    else:
+        index_counter = len(existing_df) + 1
 else:
     existing_df = pd.DataFrame()
     existing_links = set()
@@ -170,9 +177,9 @@ for url in urls:
             except Exception as e:
                 print(f"PDF 처리 중 오류 발생: {e}")
 
-        # 신규 보고서에 대해서만 요약 실행 (PDF 텍스트가 있을 경우)
+        # PDF 텍스트가 있으면 보고서 요약 실행
         if pdf_text:
-            # 전체 보고서 요약 (원래의 요약)
+            # 전체 보고서 요약
             full_summary_text = classify_title(pdf_text)
             # 1줄 요약
             one_line_text = one_line_summary(pdf_text)
@@ -195,10 +202,11 @@ for url in urls:
         index_counter += 1
         
         processed_count += 1
-        #if processed_count >= 2: 
-        #   break
+        if processed_count >= 2: 
+           break
 
-# 신규 데이터가 있으면 기존 데이터와 합쳐 CSV로 저장 (모든 셀을 큰따옴표로 감쌈)
+# 신규 데이터가 있으면 기존 데이터와 합쳐 CSV로 저장합니다.
+# (모든 셀을 큰따옴표로 감싸 저장)
 if new_reports:
     new_df = pd.DataFrame(new_reports)
     if not existing_df.empty:
@@ -208,10 +216,10 @@ if new_reports:
 
     # 날짜 컬럼을 datetime 타입으로 변환 (입력 형식은 '년.월.일' 이므로 format='%y.%m.%d' 사용)
     updated_df['날짜'] = pd.to_datetime(updated_df['날짜'], format='%y.%m.%d', errors='coerce')
-    # 날짜 기준 내림차순 정렬 (데이터프레임에 저장될 때는 '년-월-일' 포맷이 기본 출력입니다)
+    # 날짜 기준 내림차순 정렬 (저장될 때 기본 출력 포맷은 '년-월-일')
     updated_df = updated_df.sort_values(by='날짜', ascending=False)
 
-    # 최종 CSV 파일 저장 전 "index" 칼럼 삭제
+    # 최종 CSV 파일 저장 전 "index" 칼럼 삭제 (원한다면 이 부분은 주석 처리 가능합니다)
     if 'index' in updated_df.columns:
         updated_df = updated_df.drop(columns=['index'])
         
