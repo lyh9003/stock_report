@@ -237,8 +237,8 @@ for url in urls:
         index_counter += 1
         
         processed_count += 1
-        if processed_count >= 2: 
-           break
+        #if processed_count >= 2: 
+        #   break
 
 # 신규 데이터가 있으면 기존 데이터와 합쳐 CSV로 저장 (모든 셀을 큰따옴표로 감싸 저장)
 if new_reports:
