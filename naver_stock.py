@@ -56,7 +56,7 @@ def parse_date(x):
 def classify_title(prompt):
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[
                 {
                     "role": "system",
@@ -79,7 +79,7 @@ def classify_title(prompt):
 def one_line_summary(prompt):
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[
                 {
                     "role": "system",
@@ -100,7 +100,7 @@ def one_line_summary(prompt):
 def extract_keywords(summary_text):
     try:
         resp = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4.1-nano",
             messages=[
                 {
                     "role": "system",
