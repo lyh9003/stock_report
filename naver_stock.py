@@ -50,6 +50,45 @@ def parse_date(x):
         return pd.NaT
 
 
+def fetch_detail_info(session, detail_href):
+    """
+    네이버 증권 리포트 상세 페이지에서 전체 제목과 목표주가를 추출한다.
+    detail_href: tds[1]의 <a> href 값 (예: 'company_read.naver?nid=43634&...')
+    반환: (full_title, target_price)  # 없으면 각각 None
+    """
+    base = "https://finance.naver.com/research/"
+    detail_url = base + detail_href
+    full_title = None
+    target_price = None
+    try:
+        resp = session.get(detail_url)
+        resp.encoding = resp.apparent_encoding
+        detail_soup = BeautifulSoup(resp.text, "html.parser")
+
+        # 전체 제목: <title> 태그에서 추출
+        # 형식: "{카테고리} - {전체제목} : Npay 증권"
+        page_title_tag = detail_soup.find("title")
+        if page_title_tag:
+            pt = page_title_tag.get_text(strip=True)
+            m = re.match(r"^.+?\s[-]\s(.+?)\s*:\s*Npay", pt)
+            if m:
+                full_title = m.group(1).strip()
+
+        # 목표주가: <em class="money"><strong>숫자</strong></em>
+        money_em = detail_soup.find("em", class_="money")
+        if money_em:
+            strong = money_em.find("strong")
+            if strong:
+                price_text = strong.get_text(strip=True).replace(",", "")
+                if price_text.isdigit():
+                    target_price = price_text
+
+    except Exception as e:
+        print(f"  └─ 상세 페이지 처리 오류: {e}")
+
+    return full_title, target_price
+
+
 # ──────────────────────────────────────────────
 # 2. GPT 요약/키워드 함수
 # ──────────────────────────────────────────────
@@ -118,12 +157,21 @@ def extract_keywords(summary_text):
 
 
 # ──────────────────────────────────────────────
-# 3. 크롤링 대상 URL
+# 3. 크롤링 대상 URL (url, 출처 레이블)
 # ──────────────────────────────────────────────
 urls = [
-    "https://finance.naver.com/research/industry_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=upjong&upjong=%B9%DD%B5%B5%C3%BC",
-    "https://finance.naver.com/research/company_list.naver?searchType=itemCode&itemName=%BB%EF%BC%BA%C0%FC%C0%DA&itemCode=005930",
-    "https://finance.naver.com/research/company_list.naver?searchType=itemCode&itemName=SK%C7%CF%C0%CC%B4%D0%BDBA&itemCode=000660",
+    (
+        "https://finance.naver.com/research/industry_list.naver?keyword=&brokerCode=&writeFromDate=&writeToDate=&searchType=upjong&upjong=%B9%DD%B5%B5%C3%BC",
+        "반도체 업종",
+    ),
+    (
+        "https://finance.naver.com/research/company_list.naver?searchType=itemCode&itemName=%BB%EF%BC%BA%C0%FC%C0%DA&itemCode=005930",
+        "삼성전자",
+    ),
+    (
+        "https://finance.naver.com/research/company_list.naver?searchType=itemCode&itemName=SK%C7%CF%C0%CC%B4%D0%BDBA&itemCode=000660",
+        "SK하이닉스",
+    ),
 ]
 
 csv_file = "reports.csv"
@@ -146,8 +194,8 @@ else:
 session = requests.Session()
 new_reports = []
 
-for url in urls:
-    print(f"[CRAWL] {url}")
+for url, source_label in urls:
+    print(f"[CRAWL] {source_label} - {url}")
     resp = session.get(url)
     resp.raise_for_status()
 
@@ -159,12 +207,12 @@ for url in urls:
         if not file_td:
             continue
 
-        # ――― 수정 부분: <a> 태그 및 href 안전 체크 ―――
+        # ――― <a> 태그 및 href 안전 체크 ―――
         pdf_a = file_td.find("a")
         if not pdf_a or not pdf_a.has_attr("href"):
             continue  # 링크 없는 행 건너뜀
         pdf_url = pdf_a["href"]
-        # ―――――――――――――――――――――――――――――――――――――――
+        # ―――――――――――――――――――――――――――――――――――
 
         if pdf_url in existing_links:
             processed += 1
@@ -180,6 +228,13 @@ for url in urls:
         report_title = title_tag.get_text(strip=True) if title_tag else ""
         broker_name = tds[2].get_text(strip=True)
         date_str = row.find("td", class_="date").get_text(strip=True)
+
+        # 상세 페이지에서 전체 제목 및 목표주가 추출
+        target_price = None
+        if title_tag and title_tag.get("href"):
+            full_title, target_price = fetch_detail_info(session, title_tag["href"])
+            if full_title:
+                report_title = full_title
 
         # PDF 다운로드
         print(f"  └─ PDF 다운로드: {pdf_url}")
@@ -214,8 +269,10 @@ for url in urls:
             {
                 "index": index_counter,
                 "날짜": date_str,
+                "출처": source_label,
                 "증권사": broker_name,
                 "레포트제목": report_title,
+                "목표주가": target_price,
                 "레포트본문전체": pdf_text,
                 "전체요약": full_summary,
                 "1줄 요약": one_line,
@@ -224,7 +281,7 @@ for url in urls:
                 "파일크기": file_size,
             }
         )
-        print(f"  └─ 저장: {index_counter} ({report_title})")
+        print(f"  └─ 저장: {index_counter} ({report_title}) [출처: {source_label}] [목표주가: {target_price}]")
         index_counter += 1
         processed += 1
 
